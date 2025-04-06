@@ -12,21 +12,27 @@ app.use(express.json());
 const cache = new Map();
 const CACHE_TTL = 1000 * 60 * 10;
 
-app.get('/api/items/list', async (req, res) => {
+app.get('/api/items/refresh', async (req, res) => {
   try {
-    const indexUrl = 'https://thebazaar.wiki.gg/wiki/Special:AllPages';
-    const { data: html } = await axios.get(indexUrl);
-    const $ = cheerio.load(html);
-    const items = [];
-    $('#mw-content-text li a').each((_, el) => {
-      const name = $(el).text().trim();
-      if (name) items.push(name);
-    });
-    res.json({ items });
+    const indexRes = await axios.get(`${process.env.SELF_URL || 'https://bazaar-extension-backend-0q6x.onrender.com'}/api/items/list`);
+    const itemNames = indexRes.data.items;
+
+    const updated = {};
+    await Promise.all(itemNames.map(async (name) => {
+      const itemData = await scrapeItem(name);
+      if (itemData) {
+        cache.set(name.toLowerCase(), { data: itemData, timestamp: Date.now() });
+        updated[name] = itemData;
+      }
+    }));
+
+    res.send(`✅ Manual refresh complete. Updated ${Object.keys(updated).length} items.`);
   } catch (err) {
-    res.status(500).json({ error: 'Could not load item list' });
+    console.error('[REFRESH ERROR]', err.response?.data || err.message || err);
+    res.status(500).send(`❌ Refresh failed: ${err.message}`);
   }
 });
+
 
 function extractEnchantments($) {
   const enchantments = [];
