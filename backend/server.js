@@ -12,19 +12,42 @@ app.use(express.json());
 const cache = new Map();
 const CACHE_TTL = 1000 * 60 * 10;
 
-app.get('/api/items/refresh', async (req, res) => {
+app.post('/api/items/refresh', async (req, res) => {
   try {
-    const indexRes = await axios.get(`${process.env.SELF_URL || 'https://bazaar-extension-backend-0q6x.onrender.com'}/api/items/list`);
-    const itemNames = indexRes.data.items;
+    console.log("🌀 Refresh: Scraping wiki for item names...");
+    const indexUrl = 'https://thebazaar.wiki.gg/wiki/Special:AllPages';
+    const { data: html } = await axios.get(indexUrl);
+    const $ = cheerio.load(html);
+
+    const itemNames = [];
+    $('#mw-content-text li a').each((_, el) => {
+      const name = $(el).text().trim();
+      if (name) itemNames.push(name);
+    });
+
+    console.log(`📦 Found ${itemNames.length} items. Fetching details...`);
 
     const updated = {};
     await Promise.all(itemNames.map(async (name) => {
-      const itemData = await scrapeItem(name);
-      if (itemData) {
-        cache.set(name.toLowerCase(), { data: itemData, timestamp: Date.now() });
-        updated[name] = itemData;
+      try {
+        const itemData = await scrapeItem(name);
+        if (itemData) {
+          cache.set(name.toLowerCase(), { data: itemData, timestamp: Date.now() });
+          updated[name] = itemData;
+        }
+      } catch (err) {
+        console.warn(`❌ Failed to scrape ${name}: ${err.message}`);
       }
     }));
+
+    console.log(`✅ Refresh done. Updated ${Object.keys(updated).length} items.`);
+    res.json({ updated });
+  } catch (err) {
+    console.error('[REFRESH ERROR]', err.message || err);
+    res.status(500).json({ error: 'Refresh failed', detail: err.message });
+  }
+});
+
 
     res.send(`✅ Manual refresh complete. Updated ${Object.keys(updated).length} items.`);
   } catch (err) {
