@@ -122,6 +122,15 @@ cron.schedule('0 2 * * *', async () => {
     console.error('[CRON] Failed to refresh items:', err.message);
   }
 });
+// Browser-friendly manual refresh trigger
+app.get('/api/items/refresh', async (req, res) => {
+  try {
+    const refresh = await axios.post(`http://localhost:${PORT}/api/items/refresh`);
+    res.send(`✅ Manual refresh complete. Updated ${Object.keys(refresh.data.updated).length} items.`);
+  } catch (err) {
+    res.status(500).send('❌ Refresh failed: ' + err.message);
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Backend running at http://localhost:${PORT}`);
