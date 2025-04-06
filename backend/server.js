@@ -125,7 +125,7 @@ cron.schedule('0 2 * * *', async () => {
 // Browser-friendly manual refresh trigger
 app.get('/api/items/refresh', async (req, res) => {
   try {
-    const refresh = await axios.post(`http://localhost:${PORT}/api/items/refresh`);
+    const refresh = await axios.post(`https://bazaar-extension-backend-0q6x.onrender.com/:${PORT}/api/items/refresh`);
     res.send(`✅ Manual refresh complete. Updated ${Object.keys(refresh.data.updated).length} items.`);
   } catch (err) {
     res.status(500).send('❌ Refresh failed: ' + err.message);
