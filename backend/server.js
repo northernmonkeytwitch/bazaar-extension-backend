@@ -28,17 +28,22 @@ app.post('/api/items/refresh', async (req, res) => {
     console.log(`📦 Found ${itemNames.length} items. Fetching details...`);
 
     const updated = {};
-    await Promise.all(itemNames.map(async (name) => {
-      try {
-        const itemData = await scrapeItem(name);
-        if (itemData) {
-          cache.set(name.toLowerCase(), { data: itemData, timestamp: Date.now() });
-          updated[name] = itemData;
+    await Promise.all(
+      itemNames.map(async (name) => {
+        try {
+          const itemData = await scrapeItem(name);
+          if (itemData) {
+            cache.set(name.toLowerCase(), {
+              data: itemData,
+              timestamp: Date.now(),
+            });
+            updated[name] = itemData;
+          }
+        } catch (err) {
+          console.warn(`❌ Failed to scrape ${name}: ${err.message}`);
         }
-      } catch (err) {
-        console.warn(`❌ Failed to scrape ${name}: ${err.message}`);
-      }
-    }));
+      })
+    );
 
     console.log(`✅ Refresh done. Updated ${Object.keys(updated).length} items.`);
     res.json({ updated });
@@ -48,13 +53,6 @@ app.post('/api/items/refresh', async (req, res) => {
   }
 });
 
-
-    res.send(`✅ Manual refresh complete. Updated ${Object.keys(updated).length} items.`);
-  } catch (err) {
-    console.error('[REFRESH ERROR]', err.response?.data || err.message || err);
-    res.status(500).send(`❌ Refresh failed: ${err.message}`);
-  }
-});
 
 
 function extractEnchantments($) {
